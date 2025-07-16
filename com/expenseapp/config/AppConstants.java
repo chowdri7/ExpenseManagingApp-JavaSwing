@@ -6,9 +6,7 @@ import java.util.List;
 public class AppConstants {
     public static final String TRANSACTION_IN = "Cash In";
     public static final String TRANSACTION_OUT = "Cash Out";
-    public static final List<String> PERSONS = Arrays.asList(
-        "John", "Alice", "Bob", "Charlie", "David"
-    );
+    
 
     public static final List<String> CATEGORIES = Arrays.asList(
         "Food", "Rent", "Transport", "Shopping", "Salary", "Investment", "Medical", "Entertainment", "Miscellaneous"

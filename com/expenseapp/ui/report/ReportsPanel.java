@@ -3,13 +3,17 @@ package com.expenseapp.ui.report;
 import com.expenseapp.config.AppConstants;
 import com.expenseapp.config.UIConfig;
 import com.expenseapp.dao.ExpenseDAO;
+import com.expenseapp.dao.PassbookDAO;
 import com.expenseapp.model.ExpenseEntry;
 import com.expenseapp.model.Passbook;
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.renderer.category.BarRenderer;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.jfree.data.general.DefaultPieDataset;
+import com.toedter.calendar.JDateChooser;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -24,7 +28,7 @@ public class ReportsPanel extends JPanel {
     private Passbook passbook;
     private JTable resultTable;
 
-    private JTextField fromField, toField;
+    private JDateChooser fromDateChooser, toDateChooser;
     private JComboBox<String> quickRangeCombo, reportTypeCombo;
     private JCheckBox categoryCheck, personCheck, groupByCategoryCheck, groupByPersonCheck;
     private JCheckBox cashInCheck, cashOutCheck;
@@ -43,35 +47,39 @@ public class ReportsPanel extends JPanel {
         JLabel fromLabel = new JLabel("From:");
         fromLabel.setBounds(30, 20, 50, 25);
         add(fromLabel);
-        fromField = new JTextField("2023-01-01");
-        fromField.setBounds(80, 20, 100, 25);
-        add(fromField);
+        fromDateChooser = new JDateChooser();
+        fromDateChooser.setBounds(80, 20, 120, 25);
+        fromDateChooser.setDateFormatString("yyyy-MM-dd");
+        fromDateChooser.setDate(new Date());
+        add(fromDateChooser);
 
         JLabel toLabel = new JLabel("To:");
-        toLabel.setBounds(200, 20, 30, 25);
+        toLabel.setBounds(220, 20, 30, 25);
         add(toLabel);
-        toField = new JTextField("2023-12-31");
-        toField.setBounds(230, 20, 100, 25);
-        add(toField);
+        toDateChooser = new JDateChooser();
+        toDateChooser.setBounds(250, 20, 120, 25);
+        toDateChooser.setDateFormatString("yyyy-MM-dd");
+        toDateChooser.setDate(new Date());
+        add(toDateChooser);
 
         quickRangeCombo = new JComboBox<>(new String[]{"Custom", "Last Month", "Last Quarter", "Last Half Year", "Last Year", "Last Month to Till Date"});
-        quickRangeCombo.setBounds(350, 20, 180, 25);
+        quickRangeCombo.setBounds(390, 20, 180, 25);
         add(quickRangeCombo);
 
         categoryCheck = new JCheckBox("Category");
-        categoryCheck.setBounds(30, 60, 100, 25);
+        categoryCheck.setBounds(30, 60, 90, 25);
         add(categoryCheck);
 
         selectCategoryBtn = new JButton("Select Categories");
-        selectCategoryBtn.setBounds(140, 60, 150, 25);
+        selectCategoryBtn.setBounds(130, 60, 150, 25);
         add(selectCategoryBtn);
 
         personCheck = new JCheckBox("Person");
-        personCheck.setBounds(310, 60, 100, 25);
+        personCheck.setBounds(300, 60, 80, 25);
         add(personCheck);
 
         selectPersonBtn = new JButton("Select Persons");
-        selectPersonBtn.setBounds(420, 60, 150, 25);
+        selectPersonBtn.setBounds(390, 60, 150, 25);
         add(selectPersonBtn);
 
         cashInCheck = new JCheckBox("Cash In", true);
@@ -83,15 +91,15 @@ public class ReportsPanel extends JPanel {
         add(cashOutCheck);
 
         reportTypeCombo = new JComboBox<>(new String[]{"Pie Chart", "Bar Chart"});
-        reportTypeCombo.setBounds(230, 100, 120, 25);
+        reportTypeCombo.setBounds(220, 100, 120, 25);
         add(reportTypeCombo);
 
         groupByCategoryCheck = new JCheckBox("Group by Category");
-        groupByCategoryCheck.setBounds(370, 100, 160, 25);
+        groupByCategoryCheck.setBounds(360, 100, 140, 25);
         add(groupByCategoryCheck);
 
         groupByPersonCheck = new JCheckBox("Group by Person");
-        groupByPersonCheck.setBounds(550, 100, 150, 25);
+        groupByPersonCheck.setBounds(510, 100, 140, 25);
         add(groupByPersonCheck);
 
         JButton generateBtn = new JButton("Generate Report");
@@ -101,17 +109,17 @@ public class ReportsPanel extends JPanel {
         resultTable = new JTable();
         resultTable.setEnabled(false);
         JScrollPane tableScroll = new JScrollPane(resultTable);
-        tableScroll.setBounds(30, 180, 700, 250);
+        tableScroll.setBounds(30, 180, 750, 250);
         add(tableScroll);
 
         JButton backButton = new JButton("Back");
-        backButton.setBounds(300, 450, UIConfig.BUTTON_SIZE.width, UIConfig.BUTTON_SIZE.height);
+        backButton.setBounds(340, 450, UIConfig.BUTTON_SIZE.width, UIConfig.BUTTON_SIZE.height);
         add(backButton);
 
         quickRangeCombo.addActionListener(e -> updateDatesFromRange());
 
         selectCategoryBtn.addActionListener(e -> showMultiSelectPopup("Select Categories", AppConstants.CATEGORIES, selectedCategories));
-        selectPersonBtn.addActionListener(e -> showMultiSelectPopup("Select Persons", AppConstants.PERSONS, selectedPersons));
+        selectPersonBtn.addActionListener(e -> showMultiSelectPopup("Select Persons", PassbookDAO.getUniquePersonNamesByPassbook(passbook.getId()), selectedPersons));
 
         generateBtn.addActionListener(e -> generateReport());
         backButton.addActionListener(e -> cardLayout.show(parentPanel, "dashboard"));
@@ -137,9 +145,8 @@ public class ReportsPanel extends JPanel {
         }
 
         Date fromDate = cal.getTime();
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-        fromField.setText(sdf.format(fromDate));
-        toField.setText(sdf.format(toDate));
+        fromDateChooser.setDate(fromDate);
+        toDateChooser.setDate(toDate);
     }
 
     private void showMultiSelectPopup(String title, List<String> options, Set<String> selectedSet) {
@@ -151,7 +158,7 @@ public class ReportsPanel extends JPanel {
 
         List<JCheckBox> checkBoxes = new ArrayList<>();
         for (String opt : options) {
-            JCheckBox cb = new JCheckBox(opt, selectedSet.contains(opt) || selectedSet.isEmpty());
+            JCheckBox cb = new JCheckBox(opt, selectedSet.isEmpty() || selectedSet.contains(opt));
             checkBoxes.add(cb);
             checkPanel.add(cb);
         }
@@ -187,15 +194,22 @@ public class ReportsPanel extends JPanel {
 
     private void generateReport() {
         try {
-            Date fromDate = new SimpleDateFormat("yyyy-MM-dd").parse(fromField.getText());
-            Date toDate = new SimpleDateFormat("yyyy-MM-dd").parse(toField.getText());
+            Date fromDate = fromDateChooser.getDate();
+            Date selectedToDate = toDateChooser.getDate();
+            final Date finalToDate;
+
+            if (selectedToDate != null) {
+                finalToDate = new Date(selectedToDate.getTime() + (24 * 60 * 60 * 1000) - 1);
+            } else {
+                finalToDate = null;
+            }
 
             List<ExpenseEntry> allEntries = expenseDAO.getExpensesByPassbook(passbook.getId());
 
             List<ExpenseEntry> filtered = allEntries.stream()
-                    .filter(e -> !e.getDate().before(fromDate) && !e.getDate().after(toDate))
+                    .filter(e -> !e.getDate().before(fromDate) && !e.getDate().after(finalToDate))
                     .filter(e -> (cashInCheck.isSelected() && "Cash In".equals(e.getType()))
-                              || (cashOutCheck.isSelected() && "Cash Out".equals(e.getType())))
+                            || (cashOutCheck.isSelected() && "Cash Out".equals(e.getType())))
                     .filter(e -> !categoryCheck.isSelected() || selectedCategories.isEmpty() || selectedCategories.contains(e.getCategory()))
                     .filter(e -> !personCheck.isSelected() || selectedPersons.isEmpty() || selectedPersons.contains(e.getPersonName()))
                     .collect(Collectors.toList());
@@ -203,7 +217,7 @@ public class ReportsPanel extends JPanel {
             updateTable(filtered);
             showChartPopup(filtered);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Invalid date format. Use yyyy-MM-dd.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Invalid dates.", "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -267,7 +281,7 @@ public class ReportsPanel extends JPanel {
     resultTable.setModel(model);
 }
 
-    private void showChartPopup(List<ExpenseEntry> entries) {
+private void showChartPopup(List<ExpenseEntry> entries) {
     String chartType = (String) reportTypeCombo.getSelectedItem();
 
     Map<String, Double> groupMap = new HashMap<>();
@@ -288,7 +302,6 @@ public class ReportsPanel extends JPanel {
             groupMap.merge(e.getPersonName(), e.getAmount(), Double::sum);
         }
     } else {
-        // Neither group: Cash In vs Cash Out
         double totalIn = entries.stream().filter(e -> "Cash In".equals(e.getType())).mapToDouble(ExpenseEntry::getAmount).sum();
         double totalOut = entries.stream().filter(e -> "Cash Out".equals(e.getType())).mapToDouble(ExpenseEntry::getAmount).sum();
         groupMap.put("Cash In", totalIn);
@@ -302,8 +315,21 @@ public class ReportsPanel extends JPanel {
         chart = ChartFactory.createPieChart("Expenses", dataset, true, true, false);
     } else {
         DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-        groupMap.forEach((key, value) -> dataset.addValue(value, "Amount", key));
+        for (Map.Entry<String, Double> entry : groupMap.entrySet()) {
+            dataset.addValue(entry.getValue(), "Amount", entry.getKey());
+        }
         chart = ChartFactory.createBarChart("Expenses", "Group", "Amount", dataset);
+
+        // Set different colors for each bar
+        var plot = chart.getCategoryPlot();
+        var renderer = new org.jfree.chart.renderer.category.BarRenderer();
+
+        // Assign different colors
+        Color[] colors = {Color.BLUE, Color.GREEN, Color.ORANGE, Color.MAGENTA, Color.CYAN, Color.YELLOW, Color.PINK, Color.LIGHT_GRAY, Color.DARK_GRAY};
+        for (int i = 0; i < dataset.getColumnCount(); i++) {
+            renderer.setSeriesPaint(i, colors[i % colors.length]);
+        }
+        plot.setRenderer(renderer);
     }
 
     JDialog chartDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chart", true);
@@ -314,7 +340,7 @@ public class ReportsPanel extends JPanel {
     closeBtn.addActionListener(e -> chartDialog.dispose());
     chartDialog.add(closeBtn, BorderLayout.SOUTH);
 
-    chartDialog.setSize(600, 500);
+    chartDialog.setSize(700, 500);
     chartDialog.setLocationRelativeTo(this);
     chartDialog.setVisible(true);
 }

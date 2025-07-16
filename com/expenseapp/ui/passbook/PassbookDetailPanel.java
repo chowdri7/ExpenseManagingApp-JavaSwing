@@ -8,6 +8,7 @@ import com.expenseapp.model.Passbook;
 import javax.swing.*;
 import java.awt.*;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.List;
 
 public class PassbookDetailPanel extends JPanel {
@@ -89,34 +90,86 @@ public class PassbookDetailPanel extends JPanel {
         }
     }
 
+
     public void refreshEntries() {
-        entriesPanel.removeAll();
-        List<ExpenseEntry> entries = expenseDAO.getExpensesByPassbook(passbook.getId());
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy HH:mm");
+    entriesPanel.removeAll();
+    List<ExpenseEntry> entries = expenseDAO.getExpensesByPassbook(passbook.getId());
+    Collections.reverse(entries); // Latest first
 
-        if (entries.isEmpty()) {
-            JLabel noEntry = new JLabel("No transactions yet.");
-            noEntry.setFont(UIConfig.LABEL_FONT);
-            entriesPanel.add(noEntry);
-        } else {
-            for (ExpenseEntry entry : entries) {
-                String text = sdf.format(entry.getDate())
-                        + " | " + entry.getType()
-                        + " | ₹" + String.format("%.2f", entry.getAmount())
-                        + " | " + entry.getCategory()
-                        + " | " + entry.getRemarks();
+    SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy HH:mm");
 
-                JLabel label = new JLabel(text);
-                label.setOpaque(true);
-                label.setBackground(UIConfig.ENTRY_BG_COLOR);
-                label.setBorder(BorderFactory.createLineBorder(UIConfig.PANEL_BORDER_COLOR));
-                label.setFont(UIConfig.LABEL_FONT);
-                label.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-                entriesPanel.add(label);
-                entriesPanel.add(Box.createRigidArea(new Dimension(0, 5)));
-            }
+    if (entries.isEmpty()) {
+        JLabel noEntry = new JLabel("No transactions yet.");
+        noEntry.setFont(UIConfig.LABEL_FONT);
+        entriesPanel.add(noEntry);
+    } else {
+        for (ExpenseEntry entry : entries) {
+            JPanel rowPanel = new JPanel(new BorderLayout());
+            rowPanel.setBackground(UIConfig.ENTRY_BG_COLOR);
+            rowPanel.setBorder(BorderFactory.createLineBorder(UIConfig.PANEL_BORDER_COLOR, 1));
+            rowPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 70));
+
+            // Details panel (left side)
+            JPanel detailsPanel = new JPanel();
+            detailsPanel.setLayout(new BoxLayout(detailsPanel, BoxLayout.Y_AXIS));
+            detailsPanel.setOpaque(false);
+
+            JLabel dateLabel = new JLabel(sdf.format(entry.getDate()));
+            dateLabel.setFont(UIConfig.LABEL_FONT);
+
+            JLabel catRemarksLabel = new JLabel(entry.getCategory() + " | " + entry.getRemarks());
+            catRemarksLabel.setFont(new Font("SansSerif", Font.ITALIC, 12));
+
+            detailsPanel.add(dateLabel);
+            detailsPanel.add(catRemarksLabel);
+
+            // Amount panel (right side)
+            JPanel amountPanel = new JPanel(new BorderLayout());
+            amountPanel.setOpaque(false);
+
+            JLabel amountLabel = new JLabel("₹" + String.format("%.2f", entry.getAmount()));
+            amountLabel.setFont(new Font("SansSerif", Font.BOLD, 16));
+            amountLabel.setForeground(entry.getType().equals("Cash In") ? new Color(40, 167, 69) : new Color(220, 53, 69));
+            amountLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+
+            // Arrow panel
+            JPanel arrowPanel = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    Graphics2D g2 = (Graphics2D) g;
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g2.setStroke(new BasicStroke(3));
+
+                    if ("Cash In".equals(entry.getType())) {
+                        g2.setColor(new Color(40, 167, 69)); // Green
+                        g2.drawLine(10, 30, 30, 10);
+                        g2.drawLine(10, 30, 30, 30);
+                        g2.drawLine(10, 10, 10, 30);
+                    } else {
+                        g2.setColor(new Color(220, 53, 69)); // Red
+                        g2.drawLine(10, 30, 30, 10);
+                        g2.drawLine(10, 10, 30, 10);
+                        g2.drawLine(30, 10, 30, 30);
+                    }
+                }
+            };
+            arrowPanel.setPreferredSize(new Dimension(40, 40));
+            arrowPanel.setOpaque(false);
+
+            amountPanel.add(amountLabel, BorderLayout.CENTER);
+            amountPanel.add(arrowPanel, BorderLayout.EAST);
+
+            rowPanel.add(detailsPanel, BorderLayout.CENTER);
+            rowPanel.add(amountPanel, BorderLayout.EAST);
+
+            entriesPanel.add(Box.createRigidArea(new Dimension(0, 5)));
+            entriesPanel.add(rowPanel);
         }
-        entriesPanel.revalidate();
-        entriesPanel.repaint();
     }
+
+    entriesPanel.revalidate();
+    entriesPanel.repaint();
+}
+
 }

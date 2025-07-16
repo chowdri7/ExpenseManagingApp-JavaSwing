@@ -63,34 +63,50 @@ public class DashboardPanel extends JPanel {
     }
 
     public void refreshPassbookList() {
-        passbookListPanel.removeAll();
-        List<Passbook> passbooks = passbookDAO.getPassbooksByUser(currentUser.getId());
-        if (passbooks.isEmpty()) {
-            JLabel noData = new JLabel("No passbooks found. Create one to start tracking expenses.");
-            noData.setFont(UIConfig.LABEL_FONT);
-            passbookListPanel.add(noData);
-        } else {
-            for (Passbook pb : passbooks) {
-                double balance = expenseDAO.getPassbookBalance(pb.getId());
-                JButton pbButton = new JButton(pb.getName() + " — Balance: ₹" + String.format("%.2f", balance));
-                pbButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-                pbButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
-                pbButton.setBackground(UIConfig.BUTTON_COLOR);
-                pbButton.setForeground(UIConfig.BUTTON_TEXT_COLOR);
-                pbButton.setFont(UIConfig.PASSBOOK_FONT);
+    passbookListPanel.removeAll();
+    List<Passbook> passbooks = passbookDAO.getPassbooksByUser(currentUser.getId());
+    if (passbooks.isEmpty()) {
+        JLabel noData = new JLabel("No passbooks found. Create one to start tracking expenses.");
+        noData.setFont(UIConfig.LABEL_FONT);
+        passbookListPanel.add(noData);
+    } else {
+        for (Passbook pb : passbooks) {
+            double balance = expenseDAO.getPassbookBalance(pb.getId());
 
-                pbButton.addActionListener(e -> {
-                    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            JPanel pbPanel = new JPanel(new BorderLayout());
+            pbPanel.setBackground(UIConfig.BUTTON_COLOR);
+            pbPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+            pbPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+
+            JLabel nameLabel = new JLabel(pb.getName());
+            nameLabel.setFont(UIConfig.PASSBOOK_FONT);
+            nameLabel.setForeground(UIConfig.BUTTON_TEXT_COLOR);
+            nameLabel.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 0));
+
+            JLabel balanceLabel = new JLabel("₹" + String.format("%.2f", balance));
+            balanceLabel.setFont(UIConfig.PASSBOOK_FONT);
+            balanceLabel.setForeground(UIConfig.BUTTON_TEXT_COLOR);
+            balanceLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 10));
+            balanceLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+
+            pbPanel.add(nameLabel, BorderLayout.WEST);
+            pbPanel.add(balanceLabel, BorderLayout.EAST);
+
+            pbPanel.addMouseListener(new java.awt.event.MouseAdapter() {
+                public void mouseClicked(java.awt.event.MouseEvent evt) {
+                    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(passbookListPanel);
                     if (topFrame instanceof com.expenseapp.MainFrame mainFrame) {
                         mainFrame.openPassbookDetailPanel(pb);
                     }
-                });
+                }
+            });
 
-                passbookListPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-                passbookListPanel.add(pbButton);
-            }
+            passbookListPanel.add(Box.createRigidArea(new Dimension(0, 10)));
+            passbookListPanel.add(pbPanel);
         }
-        passbookListPanel.revalidate();
-        passbookListPanel.repaint();
     }
+    passbookListPanel.revalidate();
+    passbookListPanel.repaint();
+}
+
 }

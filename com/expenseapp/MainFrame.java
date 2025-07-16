@@ -91,6 +91,8 @@ public class MainFrame extends JFrame {
         SwingUtilities.invokeLater(() -> {
             MainFrame app = new MainFrame();
             app.setVisible(true);
+            app.setSize(825, 550);
+            app.setResizable(false);
         });
     }
 }

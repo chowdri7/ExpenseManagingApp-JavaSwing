@@ -128,5 +128,7 @@ public class ExpenseEntryPanel extends JPanel {
     public ExpenseEntryPanel(CardLayout cardLayout, JPanel parentPanel, Passbook passbook, String type) {
         this(cardLayout, parentPanel, passbook);
         typeCombo.setSelectedItem(type);
+        typeCombo.setEnabled(false);
     }
+
 }
