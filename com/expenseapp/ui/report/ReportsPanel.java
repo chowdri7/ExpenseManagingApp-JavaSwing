@@ -208,114 +208,115 @@ public class ReportsPanel extends JPanel {
     }
 
     private void updateTable(List<ExpenseEntry> entries) {
-        String[] columns;
-        DefaultTableModel model;
+    String[] columns;
+    DefaultTableModel model;
 
-        boolean groupCat = groupByCategoryCheck.isSelected();
-        boolean groupPer = groupByPersonCheck.isSelected();
+    boolean groupCat = groupByCategoryCheck.isSelected();
+    boolean groupPer = groupByPersonCheck.isSelected();
 
-        if (groupCat || groupPer) {
-            if (groupCat && groupPer) {
-                columns = new String[]{"Category", "Person", "Total Amount"};
-                model = new DefaultTableModel(columns, 0);
-                Map<String, Map<String, Double>> grouped = new HashMap<>();
-
-                for (ExpenseEntry e : entries) {
-                    grouped
-                        .computeIfAbsent(e.getCategory(), k -> new HashMap<>())
-                        .merge(e.getPersonName(), e.getAmount(), Double::sum);
-                }
-
-                for (var catEntry : grouped.entrySet()) {
-                    for (var perEntry : catEntry.getValue().entrySet()) {
-                        model.addRow(new Object[]{catEntry.getKey(), perEntry.getKey(), String.format("₹%.2f", perEntry.getValue())});
-                    }
-                }
-            } else if (groupCat) {
-                columns = new String[]{"Category", "Total Amount"};
-                model = new DefaultTableModel(columns, 0);
-                Map<String, Double> grouped = new HashMap<>();
-                for (ExpenseEntry e : entries) {
-                    grouped.merge(e.getCategory(), e.getAmount(), Double::sum);
-                }
-                for (var entry : grouped.entrySet()) {
-                    model.addRow(new Object[]{entry.getKey(), String.format("₹%.2f", entry.getValue())});
-                }
-            } else {
-                columns = new String[]{"Person", "Total Amount"};
-                model = new DefaultTableModel(columns, 0);
-                Map<String, Double> grouped = new HashMap<>();
-                for (ExpenseEntry e : entries) {
-                    grouped.merge(e.getPersonName(), e.getAmount(), Double::sum);
-                }
-                for (var entry : grouped.entrySet()) {
-                    model.addRow(new Object[]{entry.getKey(), String.format("₹%.2f", entry.getValue())});
-                }
-            }
-        } else {
-            columns = new String[]{"Date", "Type", "Amount", "Category", "Person", "Remarks"};
-            model = new DefaultTableModel(columns, 0);
-
-            for (ExpenseEntry e : entries) {
-                model.addRow(new Object[]{
-                        new SimpleDateFormat("dd MMM yyyy").format(e.getDate()),
-                        e.getType(),
-                        String.format("₹%.2f", e.getAmount()),
-                        e.getCategory(),
-                        e.getPersonName(),
-                        e.getRemarks()
-                });
-            }
-        }
-
-        resultTable.setModel(model);
-    }
-
-    private void showChartPopup(List<ExpenseEntry> entries) {
-        String chartType = (String) reportTypeCombo.getSelectedItem();
-
-        Map<String, Double> groupMap = new HashMap<>();
-        boolean groupCat = groupByCategoryCheck.isSelected();
-        boolean groupPer = groupByPersonCheck.isSelected();
-
+    if (groupCat || groupPer) {
         if (groupCat && groupPer) {
+            columns = new String[]{"Category", "Person", "Total Amount"};
+            model = new DefaultTableModel(columns, 0);
+            Map<String, Map<String, Double>> grouped = new HashMap<>();
+
             for (ExpenseEntry e : entries) {
-                String key = e.getCategory() + " - " + e.getPersonName();
-                groupMap.merge(key, e.getAmount(), Double::sum);
+                grouped
+                    .computeIfAbsent(e.getCategory(), k -> new HashMap<>())
+                    .merge(e.getPersonName(), e.getAmount(), Double::sum);
+            }
+
+            for (var catEntry : grouped.entrySet()) {
+                for (var perEntry : catEntry.getValue().entrySet()) {
+                    model.addRow(new Object[]{catEntry.getKey(), perEntry.getKey(), String.format("₹%.2f", perEntry.getValue())});
+                }
             }
         } else if (groupCat) {
+            columns = new String[]{"Category", "Total Amount"};
+            model = new DefaultTableModel(columns, 0);
+            Map<String, Double> grouped = new HashMap<>();
             for (ExpenseEntry e : entries) {
-                groupMap.merge(e.getCategory(), e.getAmount(), Double::sum);
+                grouped.merge(e.getCategory(), e.getAmount(), Double::sum);
             }
-        } else if (groupPer) {
-            for (ExpenseEntry e : entries) {
-                groupMap.merge(e.getPersonName(), e.getAmount(), Double::sum);
+            for (var entry : grouped.entrySet()) {
+                model.addRow(new Object[]{entry.getKey(), String.format("₹%.2f", entry.getValue())});
             }
         } else {
-            groupMap.put("Total", entries.stream().mapToDouble(ExpenseEntry::getAmount).sum());
+            columns = new String[]{"Person", "Total Amount"};
+            model = new DefaultTableModel(columns, 0);
+            Map<String, Double> grouped = new HashMap<>();
+            for (ExpenseEntry e : entries) {
+                grouped.merge(e.getPersonName(), e.getAmount(), Double::sum);
+            }
+            for (var entry : grouped.entrySet()) {
+                model.addRow(new Object[]{entry.getKey(), String.format("₹%.2f", entry.getValue())});
+            }
         }
+    } else {
+        // Neither group selected: show Cash In vs Cash Out summary
+        columns = new String[]{"Type", "Total Amount"};
+        model = new DefaultTableModel(columns, 0);
 
-        JFreeChart chart;
-        if ("Pie Chart".equals(chartType)) {
-            DefaultPieDataset dataset = new DefaultPieDataset();
-            groupMap.forEach(dataset::setValue);
-            chart = ChartFactory.createPieChart("Expenses", dataset, true, true, false);
-        } else {
-            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
-            groupMap.forEach((key, value) -> dataset.addValue(value, "Amount", key));
-            chart = ChartFactory.createBarChart("Expenses", "Group", "Amount", dataset);
-        }
+        double totalIn = entries.stream().filter(e -> "Cash In".equals(e.getType())).mapToDouble(ExpenseEntry::getAmount).sum();
+        double totalOut = entries.stream().filter(e -> "Cash Out".equals(e.getType())).mapToDouble(ExpenseEntry::getAmount).sum();
 
-        JDialog chartDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chart", true);
-        chartDialog.setLayout(new BorderLayout());
-        chartDialog.add(new ChartPanel(chart), BorderLayout.CENTER);
-
-        JButton closeBtn = new JButton("Close");
-        closeBtn.addActionListener(e -> chartDialog.dispose());
-        chartDialog.add(closeBtn, BorderLayout.SOUTH);
-
-        chartDialog.setSize(600, 500);
-        chartDialog.setLocationRelativeTo(this);
-        chartDialog.setVisible(true);
+        model.addRow(new Object[]{"Cash In", String.format("₹%.2f", totalIn)});
+        model.addRow(new Object[]{"Cash Out", String.format("₹%.2f", totalOut)});
     }
+
+    resultTable.setModel(model);
+}
+
+    private void showChartPopup(List<ExpenseEntry> entries) {
+    String chartType = (String) reportTypeCombo.getSelectedItem();
+
+    Map<String, Double> groupMap = new HashMap<>();
+    boolean groupCat = groupByCategoryCheck.isSelected();
+    boolean groupPer = groupByPersonCheck.isSelected();
+
+    if (groupCat && groupPer) {
+        for (ExpenseEntry e : entries) {
+            String key = e.getCategory() + " - " + e.getPersonName();
+            groupMap.merge(key, e.getAmount(), Double::sum);
+        }
+    } else if (groupCat) {
+        for (ExpenseEntry e : entries) {
+            groupMap.merge(e.getCategory(), e.getAmount(), Double::sum);
+        }
+    } else if (groupPer) {
+        for (ExpenseEntry e : entries) {
+            groupMap.merge(e.getPersonName(), e.getAmount(), Double::sum);
+        }
+    } else {
+        // Neither group: Cash In vs Cash Out
+        double totalIn = entries.stream().filter(e -> "Cash In".equals(e.getType())).mapToDouble(ExpenseEntry::getAmount).sum();
+        double totalOut = entries.stream().filter(e -> "Cash Out".equals(e.getType())).mapToDouble(ExpenseEntry::getAmount).sum();
+        groupMap.put("Cash In", totalIn);
+        groupMap.put("Cash Out", totalOut);
+    }
+
+    JFreeChart chart;
+    if ("Pie Chart".equals(chartType)) {
+        DefaultPieDataset dataset = new DefaultPieDataset();
+        groupMap.forEach(dataset::setValue);
+        chart = ChartFactory.createPieChart("Expenses", dataset, true, true, false);
+    } else {
+        DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+        groupMap.forEach((key, value) -> dataset.addValue(value, "Amount", key));
+        chart = ChartFactory.createBarChart("Expenses", "Group", "Amount", dataset);
+    }
+
+    JDialog chartDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chart", true);
+    chartDialog.setLayout(new BorderLayout());
+    chartDialog.add(new ChartPanel(chart), BorderLayout.CENTER);
+
+    JButton closeBtn = new JButton("Close");
+    closeBtn.addActionListener(e -> chartDialog.dispose());
+    chartDialog.add(closeBtn, BorderLayout.SOUTH);
+
+    chartDialog.setSize(600, 500);
+    chartDialog.setLocationRelativeTo(this);
+    chartDialog.setVisible(true);
+}
+
 }
