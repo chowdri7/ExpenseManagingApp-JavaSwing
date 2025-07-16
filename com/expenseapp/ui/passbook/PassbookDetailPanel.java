@@ -15,7 +15,9 @@ public class PassbookDetailPanel extends JPanel {
     private Passbook passbook;
     private ExpenseDAO expenseDAO;
     private JPanel entriesPanel;
+    @SuppressWarnings("unused")
     private CardLayout cardLayout;
+    @SuppressWarnings("unused")
     private JPanel parentPanel;
 
     public PassbookDetailPanel(CardLayout cardLayout, JPanel parentPanel, Passbook passbook) {

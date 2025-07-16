@@ -11,6 +11,7 @@ import java.awt.*;
 import java.util.Date;
 
 public class ExpenseEntryPanel extends JPanel {
+    @SuppressWarnings("unused")
     private Passbook passbook;
     private ExpenseDAO expenseDAO;
     private JComboBox<String> typeCombo;
