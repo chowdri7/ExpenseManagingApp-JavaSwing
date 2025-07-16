@@ -11,9 +11,9 @@ import java.awt.*;
 import java.util.Date;
 
 public class ExpenseEntryPanel extends JPanel {
-    @SuppressWarnings("unused")
     private Passbook passbook;
     private ExpenseDAO expenseDAO;
+    private JComboBox<String> typeCombo;
 
     public ExpenseEntryPanel(CardLayout cardLayout, JPanel parentPanel, Passbook passbook) {
         this.passbook = passbook;
@@ -29,7 +29,7 @@ public class ExpenseEntryPanel extends JPanel {
         JLabel typeLabel = new JLabel("Type:");
         typeLabel.setBounds(50, 60, 150, 25);
         add(typeLabel);
-        JComboBox<String> typeCombo = new JComboBox<>(new String[]{AppConstants.TRANSACTION_IN, AppConstants.TRANSACTION_OUT});
+        typeCombo = new JComboBox<>(new String[]{AppConstants.TRANSACTION_IN, AppConstants.TRANSACTION_OUT});
         typeCombo.setBounds(200, 60, 200, 25);
         add(typeCombo);
 
@@ -115,6 +115,18 @@ public class ExpenseEntryPanel extends JPanel {
             }
         });
 
-        backButton.addActionListener(e -> cardLayout.show(parentPanel, "dashboard"));
+        backButton.addActionListener(e -> {
+            JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+            if (topFrame instanceof com.expenseapp.MainFrame mainFrame) {
+                mainFrame.refreshPassbookDetail(passbook);
+            }
+            cardLayout.show(parentPanel, "passbookDetail");
+        });
+    }
+
+    // New constructor for default type
+    public ExpenseEntryPanel(CardLayout cardLayout, JPanel parentPanel, Passbook passbook, String type) {
+        this(cardLayout, parentPanel, passbook);
+        typeCombo.setSelectedItem(type);
     }
 }

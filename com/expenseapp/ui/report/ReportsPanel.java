@@ -1,156 +1,321 @@
 package com.expenseapp.ui.report;
 
+import com.expenseapp.config.AppConstants;
 import com.expenseapp.config.UIConfig;
 import com.expenseapp.dao.ExpenseDAO;
 import com.expenseapp.model.ExpenseEntry;
 import com.expenseapp.model.Passbook;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartPanel;
+import org.jfree.chart.JFreeChart;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.jfree.data.general.DefaultPieDataset;
 
 import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ReportsPanel extends JPanel {
     private ExpenseDAO expenseDAO;
     private Passbook passbook;
-    private JTextArea reportArea;
+    private JTable resultTable;
+
+    private JTextField fromField, toField;
+    private JComboBox<String> quickRangeCombo, reportTypeCombo;
+    private JCheckBox categoryCheck, personCheck, groupByCategoryCheck, groupByPersonCheck;
+    private JCheckBox cashInCheck, cashOutCheck;
+    private JButton selectCategoryBtn, selectPersonBtn;
+
+    private Set<String> selectedCategories = new HashSet<>();
+    private Set<String> selectedPersons = new HashSet<>();
 
     public ReportsPanel(CardLayout cardLayout, JPanel parentPanel, Passbook passbook) {
         this.passbook = passbook;
         this.expenseDAO = new ExpenseDAO();
+
         setLayout(null);
         setBackground(UIConfig.BACKGROUND_COLOR);
 
-        JLabel title = new JLabel("Reports - " + passbook.getName());
-        title.setFont(UIConfig.TITLE_FONT);
-        title.setBounds(150, 10, 400, 30);
-        add(title);
-
         JLabel fromLabel = new JLabel("From:");
-        fromLabel.setBounds(50, 60, 100, 25);
+        fromLabel.setBounds(30, 20, 50, 25);
         add(fromLabel);
-        JTextField fromField = new JTextField("2023-01-01");
-        fromField.setBounds(120, 60, 100, 25);
+        fromField = new JTextField("2023-01-01");
+        fromField.setBounds(80, 20, 100, 25);
         add(fromField);
 
         JLabel toLabel = new JLabel("To:");
-        toLabel.setBounds(250, 60, 50, 25);
+        toLabel.setBounds(200, 20, 30, 25);
         add(toLabel);
-        JTextField toField = new JTextField("2023-12-31");
-        toField.setBounds(300, 60, 100, 25);
+        toField = new JTextField("2023-12-31");
+        toField.setBounds(230, 20, 100, 25);
         add(toField);
 
-        JButton dateRangeBtn = new JButton("Date Range Report");
-        dateRangeBtn.setBounds(420, 60, 150, 25);
-        add(dateRangeBtn);
+        quickRangeCombo = new JComboBox<>(new String[]{"Custom", "Last Month", "Last Quarter", "Last Half Year", "Last Year", "Last Month to Till Date"});
+        quickRangeCombo.setBounds(350, 20, 180, 25);
+        add(quickRangeCombo);
 
-        JButton monthlyBtn = new JButton("Monthly");
-        monthlyBtn.setBounds(50, 100, 100, 25);
-        add(monthlyBtn);
+        categoryCheck = new JCheckBox("Category");
+        categoryCheck.setBounds(30, 60, 100, 25);
+        add(categoryCheck);
 
-        JButton quarterlyBtn = new JButton("Quarterly");
-        quarterlyBtn.setBounds(160, 100, 100, 25);
-        add(quarterlyBtn);
+        selectCategoryBtn = new JButton("Select Categories");
+        selectCategoryBtn.setBounds(140, 60, 150, 25);
+        add(selectCategoryBtn);
 
-        JButton halfYearlyBtn = new JButton("Half-Yearly");
-        halfYearlyBtn.setBounds(270, 100, 120, 25);
-        add(halfYearlyBtn);
+        personCheck = new JCheckBox("Person");
+        personCheck.setBounds(310, 60, 100, 25);
+        add(personCheck);
 
-        JButton yearlyBtn = new JButton("Yearly");
-        yearlyBtn.setBounds(400, 100, 100, 25);
-        add(yearlyBtn);
+        selectPersonBtn = new JButton("Select Persons");
+        selectPersonBtn.setBounds(420, 60, 150, 25);
+        add(selectPersonBtn);
 
-        reportArea = new JTextArea();
-        reportArea.setEditable(false);
-        JScrollPane scrollPane = new JScrollPane(reportArea);
-        scrollPane.setBounds(50, 140, 520, 300);
-        add(scrollPane);
+        cashInCheck = new JCheckBox("Cash In", true);
+        cashInCheck.setBounds(30, 100, 80, 25);
+        add(cashInCheck);
+
+        cashOutCheck = new JCheckBox("Cash Out", true);
+        cashOutCheck.setBounds(120, 100, 90, 25);
+        add(cashOutCheck);
+
+        reportTypeCombo = new JComboBox<>(new String[]{"Pie Chart", "Bar Chart"});
+        reportTypeCombo.setBounds(230, 100, 120, 25);
+        add(reportTypeCombo);
+
+        groupByCategoryCheck = new JCheckBox("Group by Category");
+        groupByCategoryCheck.setBounds(370, 100, 160, 25);
+        add(groupByCategoryCheck);
+
+        groupByPersonCheck = new JCheckBox("Group by Person");
+        groupByPersonCheck.setBounds(550, 100, 150, 25);
+        add(groupByPersonCheck);
+
+        JButton generateBtn = new JButton("Generate Report");
+        generateBtn.setBounds(30, 140, 150, 25);
+        add(generateBtn);
+
+        resultTable = new JTable();
+        resultTable.setEnabled(false);
+        JScrollPane tableScroll = new JScrollPane(resultTable);
+        tableScroll.setBounds(30, 180, 700, 250);
+        add(tableScroll);
 
         JButton backButton = new JButton("Back");
-        backButton.setBounds(250, 460, UIConfig.BUTTON_SIZE.width, UIConfig.BUTTON_SIZE.height);
+        backButton.setBounds(300, 450, UIConfig.BUTTON_SIZE.width, UIConfig.BUTTON_SIZE.height);
         add(backButton);
 
-        dateRangeBtn.addActionListener(e -> {
-            try {
-                Date fromDate = new SimpleDateFormat("yyyy-MM-dd").parse(fromField.getText());
-                Date toDate = new SimpleDateFormat("yyyy-MM-dd").parse(toField.getText());
-                showReport(fromDate, toDate);
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Invalid date format. Use yyyy-MM-dd.", "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        });
+        quickRangeCombo.addActionListener(e -> updateDatesFromRange());
 
-        monthlyBtn.addActionListener(e -> generatePeriodReport("month"));
-        quarterlyBtn.addActionListener(e -> generatePeriodReport("quarter"));
-        halfYearlyBtn.addActionListener(e -> generatePeriodReport("half"));
-        yearlyBtn.addActionListener(e -> generatePeriodReport("year"));
+        selectCategoryBtn.addActionListener(e -> showMultiSelectPopup("Select Categories", AppConstants.CATEGORIES, selectedCategories));
+        selectPersonBtn.addActionListener(e -> showMultiSelectPopup("Select Persons", AppConstants.PERSONS, selectedPersons));
 
+        generateBtn.addActionListener(e -> generateReport());
         backButton.addActionListener(e -> cardLayout.show(parentPanel, "dashboard"));
     }
 
-    private void showReport(Date fromDate, Date toDate) {
-        List<ExpenseEntry> allEntries = expenseDAO.getExpensesByPassbook(passbook.getId());
+    private void updateDatesFromRange() {
+        String selected = (String) quickRangeCombo.getSelectedItem();
+        if (selected == null || "Custom".equals(selected)) return;
 
-        List<ExpenseEntry> filtered = allEntries.stream()
-                .filter(entry -> !entry.getDate().before(fromDate) && !entry.getDate().after(toDate))
-                .collect(Collectors.toList());
+        Calendar cal = Calendar.getInstance();
+        Date toDate = cal.getTime();
+        cal.set(Calendar.DAY_OF_MONTH, 1);
 
-        displayReport(filtered);
-    }
-    
-    @SuppressWarnings("deprecation")
-    private void generatePeriodReport(String periodType) {
-        Date now = new Date();
-        Date fromDate = null;
-
-        switch (periodType) {
-            case "month":
-                fromDate = new Date(now.getYear(), now.getMonth(), 1);
-                break;
-            case "quarter":
-                int month = now.getMonth();
-                int startMonth = month / 3 * 3;
-                fromDate = new Date(now.getYear(), startMonth, 1);
-                break;
-            case "half":
-                fromDate = new Date(now.getYear(), (now.getMonth() < 6) ? 0 : 6, 1);
-                break;
-            case "year":
-                fromDate = new Date(now.getYear(), 0, 1);
-                break;
-        }
-
-        showReport(fromDate, now);
-    }
-
-    private void displayReport(List<ExpenseEntry> entries) {
-        double totalIn = 0, totalOut = 0;
-        StringBuilder sb = new StringBuilder();
-
-        SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy");
-
-        for (ExpenseEntry entry : entries) {
-            sb.append(sdf.format(entry.getDate()))
-                    .append(" | ").append(entry.getType())
-                    .append(" | ₹").append(String.format("%.2f", entry.getAmount()))
-                    .append(" | ").append(entry.getCategory())
-                    .append(" | ").append(entry.getRemarks()).append("\n");
-
-            if ("Cash In".equals(entry.getType())) {
-                totalIn += entry.getAmount();
-            } else if ("Cash Out".equals(entry.getType())) {
-                totalOut += entry.getAmount();
+        switch (selected) {
+            case "Last Month" -> cal.add(Calendar.MONTH, -1);
+            case "Last Quarter" -> cal.add(Calendar.MONTH, -3);
+            case "Last Half Year" -> cal.add(Calendar.MONTH, -6);
+            case "Last Year" -> cal.add(Calendar.YEAR, -1);
+            case "Last Month to Till Date" -> {
+                cal.add(Calendar.MONTH, -1);
+                cal.set(Calendar.DAY_OF_MONTH, cal.getActualMaximum(Calendar.DAY_OF_MONTH));
             }
         }
 
-        double balance = totalIn - totalOut;
-        sb.append("\n--- Summary ---\n");
-        sb.append("Total In: ₹").append(String.format("%.2f", totalIn)).append("\n");
-        sb.append("Total Out: ₹").append(String.format("%.2f", totalOut)).append("\n");
-        sb.append("Balance: ₹").append(String.format("%.2f", balance)).append("\n");
+        Date fromDate = cal.getTime();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        fromField.setText(sdf.format(fromDate));
+        toField.setText(sdf.format(toDate));
+    }
 
-        reportArea.setText(sb.toString());
+    private void showMultiSelectPopup(String title, List<String> options, Set<String> selectedSet) {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), title, true);
+        dialog.setLayout(new BorderLayout());
+
+        JPanel checkPanel = new JPanel();
+        checkPanel.setLayout(new BoxLayout(checkPanel, BoxLayout.Y_AXIS));
+
+        List<JCheckBox> checkBoxes = new ArrayList<>();
+        for (String opt : options) {
+            JCheckBox cb = new JCheckBox(opt, selectedSet.contains(opt) || selectedSet.isEmpty());
+            checkBoxes.add(cb);
+            checkPanel.add(cb);
+        }
+
+        JButton selectAll = new JButton("Select All");
+        JButton clearAll = new JButton("Clear All");
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(selectAll);
+        buttonPanel.add(clearAll);
+
+        selectAll.addActionListener(e -> checkBoxes.forEach(cb -> cb.setSelected(true)));
+        clearAll.addActionListener(e -> checkBoxes.forEach(cb -> cb.setSelected(false)));
+
+        JButton doneBtn = new JButton("Done");
+        doneBtn.addActionListener(e2 -> {
+            selectedSet.clear();
+            for (JCheckBox cb : checkBoxes) {
+                if (cb.isSelected()) {
+                    selectedSet.add(cb.getText());
+                }
+            }
+            dialog.dispose();
+        });
+
+        dialog.add(new JScrollPane(checkPanel), BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.NORTH);
+        dialog.add(doneBtn, BorderLayout.SOUTH);
+
+        dialog.setSize(300, 400);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void generateReport() {
+        try {
+            Date fromDate = new SimpleDateFormat("yyyy-MM-dd").parse(fromField.getText());
+            Date toDate = new SimpleDateFormat("yyyy-MM-dd").parse(toField.getText());
+
+            List<ExpenseEntry> allEntries = expenseDAO.getExpensesByPassbook(passbook.getId());
+
+            List<ExpenseEntry> filtered = allEntries.stream()
+                    .filter(e -> !e.getDate().before(fromDate) && !e.getDate().after(toDate))
+                    .filter(e -> (cashInCheck.isSelected() && "Cash In".equals(e.getType()))
+                              || (cashOutCheck.isSelected() && "Cash Out".equals(e.getType())))
+                    .filter(e -> !categoryCheck.isSelected() || selectedCategories.isEmpty() || selectedCategories.contains(e.getCategory()))
+                    .filter(e -> !personCheck.isSelected() || selectedPersons.isEmpty() || selectedPersons.contains(e.getPersonName()))
+                    .collect(Collectors.toList());
+
+            updateTable(filtered);
+            showChartPopup(filtered);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Invalid date format. Use yyyy-MM-dd.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void updateTable(List<ExpenseEntry> entries) {
+        String[] columns;
+        DefaultTableModel model;
+
+        boolean groupCat = groupByCategoryCheck.isSelected();
+        boolean groupPer = groupByPersonCheck.isSelected();
+
+        if (groupCat || groupPer) {
+            if (groupCat && groupPer) {
+                columns = new String[]{"Category", "Person", "Total Amount"};
+                model = new DefaultTableModel(columns, 0);
+                Map<String, Map<String, Double>> grouped = new HashMap<>();
+
+                for (ExpenseEntry e : entries) {
+                    grouped
+                        .computeIfAbsent(e.getCategory(), k -> new HashMap<>())
+                        .merge(e.getPersonName(), e.getAmount(), Double::sum);
+                }
+
+                for (var catEntry : grouped.entrySet()) {
+                    for (var perEntry : catEntry.getValue().entrySet()) {
+                        model.addRow(new Object[]{catEntry.getKey(), perEntry.getKey(), String.format("₹%.2f", perEntry.getValue())});
+                    }
+                }
+            } else if (groupCat) {
+                columns = new String[]{"Category", "Total Amount"};
+                model = new DefaultTableModel(columns, 0);
+                Map<String, Double> grouped = new HashMap<>();
+                for (ExpenseEntry e : entries) {
+                    grouped.merge(e.getCategory(), e.getAmount(), Double::sum);
+                }
+                for (var entry : grouped.entrySet()) {
+                    model.addRow(new Object[]{entry.getKey(), String.format("₹%.2f", entry.getValue())});
+                }
+            } else {
+                columns = new String[]{"Person", "Total Amount"};
+                model = new DefaultTableModel(columns, 0);
+                Map<String, Double> grouped = new HashMap<>();
+                for (ExpenseEntry e : entries) {
+                    grouped.merge(e.getPersonName(), e.getAmount(), Double::sum);
+                }
+                for (var entry : grouped.entrySet()) {
+                    model.addRow(new Object[]{entry.getKey(), String.format("₹%.2f", entry.getValue())});
+                }
+            }
+        } else {
+            columns = new String[]{"Date", "Type", "Amount", "Category", "Person", "Remarks"};
+            model = new DefaultTableModel(columns, 0);
+
+            for (ExpenseEntry e : entries) {
+                model.addRow(new Object[]{
+                        new SimpleDateFormat("dd MMM yyyy").format(e.getDate()),
+                        e.getType(),
+                        String.format("₹%.2f", e.getAmount()),
+                        e.getCategory(),
+                        e.getPersonName(),
+                        e.getRemarks()
+                });
+            }
+        }
+
+        resultTable.setModel(model);
+    }
+
+    private void showChartPopup(List<ExpenseEntry> entries) {
+        String chartType = (String) reportTypeCombo.getSelectedItem();
+
+        Map<String, Double> groupMap = new HashMap<>();
+        boolean groupCat = groupByCategoryCheck.isSelected();
+        boolean groupPer = groupByPersonCheck.isSelected();
+
+        if (groupCat && groupPer) {
+            for (ExpenseEntry e : entries) {
+                String key = e.getCategory() + " - " + e.getPersonName();
+                groupMap.merge(key, e.getAmount(), Double::sum);
+            }
+        } else if (groupCat) {
+            for (ExpenseEntry e : entries) {
+                groupMap.merge(e.getCategory(), e.getAmount(), Double::sum);
+            }
+        } else if (groupPer) {
+            for (ExpenseEntry e : entries) {
+                groupMap.merge(e.getPersonName(), e.getAmount(), Double::sum);
+            }
+        } else {
+            groupMap.put("Total", entries.stream().mapToDouble(ExpenseEntry::getAmount).sum());
+        }
+
+        JFreeChart chart;
+        if ("Pie Chart".equals(chartType)) {
+            DefaultPieDataset dataset = new DefaultPieDataset();
+            groupMap.forEach(dataset::setValue);
+            chart = ChartFactory.createPieChart("Expenses", dataset, true, true, false);
+        } else {
+            DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+            groupMap.forEach((key, value) -> dataset.addValue(value, "Amount", key));
+            chart = ChartFactory.createBarChart("Expenses", "Group", "Amount", dataset);
+        }
+
+        JDialog chartDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Chart", true);
+        chartDialog.setLayout(new BorderLayout());
+        chartDialog.add(new ChartPanel(chart), BorderLayout.CENTER);
+
+        JButton closeBtn = new JButton("Close");
+        closeBtn.addActionListener(e -> chartDialog.dispose());
+        chartDialog.add(closeBtn, BorderLayout.SOUTH);
+
+        chartDialog.setSize(600, 500);
+        chartDialog.setLocationRelativeTo(this);
+        chartDialog.setVisible(true);
     }
 }

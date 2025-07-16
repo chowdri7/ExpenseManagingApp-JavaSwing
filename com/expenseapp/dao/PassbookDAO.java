@@ -22,6 +22,28 @@ public class PassbookDAO {
         return false;
     }
 
+    public Passbook getPassbookByName(int userId, String name) {
+    String sql = "SELECT * FROM passbooks WHERE user_id = ? AND name = ?";
+    try (Connection conn = DBConfig.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+        stmt.setInt(1, userId);
+        stmt.setString(2, name);
+        ResultSet rs = stmt.executeQuery();
+        if (rs.next()) {
+            return new Passbook(
+                    rs.getInt("id"),
+                    rs.getInt("user_id"),
+                    rs.getString("name"),
+                    rs.getTimestamp("created_at")
+            );
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return null;
+}
+
+
     public List<Passbook> getPassbooksByUser(int userId) {
         List<Passbook> list = new ArrayList<>();
         String sql = "SELECT * FROM passbooks WHERE user_id = ?";

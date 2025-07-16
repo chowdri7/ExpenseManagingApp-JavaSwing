@@ -7,6 +7,7 @@ import com.expenseapp.ui.dashboard.DashboardPanel;
 import com.expenseapp.ui.expense.ExpenseEntryPanel;
 import com.expenseapp.ui.login.LoginPanel;
 import com.expenseapp.ui.login.RegisterPanel;
+import com.expenseapp.ui.passbook.PassbookDetailPanel;
 import com.expenseapp.ui.report.ReportsPanel;
 
 import javax.swing.*;
@@ -58,11 +59,32 @@ public class MainFrame extends JFrame {
         mainPanel.add(scrollPane, "expense");
         cardLayout.show(mainPanel, "expense");
     }
+    public void openExpensePanel(Passbook passbook, String type) {
+        ExpenseEntryPanel expensePanel = new ExpenseEntryPanel(cardLayout, mainPanel, passbook, type);
+        JScrollPane scrollPane = new JScrollPane(expensePanel);
+        mainPanel.add(scrollPane, "expense");
+        cardLayout.show(mainPanel, "expense");
+    }
 
     public void openReportsPanel(Passbook passbook) {
         ReportsPanel reportsPanel = new ReportsPanel(cardLayout, mainPanel, passbook);
         mainPanel.add(reportsPanel, "reports");
         cardLayout.show(mainPanel, "reports");
+    }
+
+    public void openPassbookDetailPanel(Passbook passbook) {
+        PassbookDetailPanel detailPanel = new PassbookDetailPanel(cardLayout, mainPanel, passbook);
+        mainPanel.add(detailPanel, "passbookDetail");
+        cardLayout.show(mainPanel, "passbookDetail");
+    }
+    public void refreshPassbookDetail(Passbook passbook) {
+        PassbookDetailPanel detailPanel = new PassbookDetailPanel(cardLayout, mainPanel, passbook);
+        mainPanel.add(detailPanel, "passbookDetail");
+    }
+
+    public void refreshDashboard() {
+        DashboardPanel newDashboard = new DashboardPanel(cardLayout, mainPanel, currentUser);
+        mainPanel.add(newDashboard, "dashboard");
     }
 
     public static void main(String[] args) {

@@ -20,10 +20,11 @@ public class DashboardPanel extends JPanel {
         this.currentUser = user;
         this.passbookDAO = new PassbookDAO();
         this.expenseDAO = new ExpenseDAO();
+
         setLayout(new BorderLayout());
         setBackground(UIConfig.BACKGROUND_COLOR);
 
-        JLabel title = new JLabel("Dashboard - Passbooks");
+        JLabel title = new JLabel("Your Passbooks");
         title.setFont(UIConfig.TITLE_FONT);
         title.setHorizontalAlignment(SwingConstants.CENTER);
         add(title, BorderLayout.NORTH);
@@ -39,7 +40,6 @@ public class DashboardPanel extends JPanel {
         createPassbookBtn.setBackground(UIConfig.BUTTON_COLOR);
         createPassbookBtn.setForeground(UIConfig.BUTTON_TEXT_COLOR);
         createPassbookBtn.setFont(UIConfig.BUTTON_FONT);
-        createPassbookBtn.setPreferredSize(UIConfig.BUTTON_SIZE);
         createPassbookBtn.addActionListener(e -> showCreatePassbookDialog());
         add(createPassbookBtn, BorderLayout.SOUTH);
 
@@ -62,7 +62,7 @@ public class DashboardPanel extends JPanel {
         }
     }
 
-    protected void refreshPassbookList() {
+    public void refreshPassbookList() {
         passbookListPanel.removeAll();
         List<Passbook> passbooks = passbookDAO.getPassbooksByUser(currentUser.getId());
         if (passbooks.isEmpty()) {
@@ -77,32 +77,14 @@ public class DashboardPanel extends JPanel {
                 pbButton.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
                 pbButton.setBackground(UIConfig.BUTTON_COLOR);
                 pbButton.setForeground(UIConfig.BUTTON_TEXT_COLOR);
-                pbButton.setFont(UIConfig.BUTTON_FONT);
+                pbButton.setFont(UIConfig.PASSBOOK_FONT);
 
-                // Later: add click listener to open passbook details
                 pbButton.addActionListener(e -> {
-                    String[] options = {"Expense Entry", "Reports"};
-                    int choice = JOptionPane.showOptionDialog(this,
-                            "What do you want to do with " + pb.getName() + "?",
-                            "Select Action",
-                            JOptionPane.YES_NO_OPTION,
-                            JOptionPane.QUESTION_MESSAGE,
-                            null,
-                            options,
-                            options[0]);
-
                     JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
-                    if (topFrame instanceof com.expenseapp.MainFrame) {
-                        com.expenseapp.MainFrame mainFrame = (com.expenseapp.MainFrame) topFrame;
-
-                        if (choice == 0) { // Expense Entry
-                            mainFrame.openExpensePanel(pb);
-                        } else if (choice == 1) { // Reports
-                            mainFrame.openReportsPanel(pb);
-                        }
+                    if (topFrame instanceof com.expenseapp.MainFrame mainFrame) {
+                        mainFrame.openPassbookDetailPanel(pb);
                     }
                 });
-
 
                 passbookListPanel.add(Box.createRigidArea(new Dimension(0, 10)));
                 passbookListPanel.add(pbButton);
